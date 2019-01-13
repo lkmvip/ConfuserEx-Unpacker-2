@@ -1,81 +1,62 @@
-﻿using ConfuserDeobfuscator.Engine.Routines.Ex.x86;
+﻿using System.Collections.Generic;
+using ConfuserDeobfuscator.Engine.Routines.Ex.x86;
 using de4dot.blocks;
 using de4dot.blocks.cflow;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ConfuserEx_Unpacker.Protections.Control_Flow
 {
-    class Cflow : BlockDeobfuscator
+    internal class Cflow : BlockDeobfuscator
     {
-        private Block switchBlock;
-        private Local localSwitch;
+        public List<Block> allSwitches = new List<Block>();
+        private IList<Local> allVars;
+        private bool ben;
         private string currentMethod;
+        private bool isolder;
+        private Local localSwitch;
+        private bool native;
+        public List<Block> processed = new List<Block>();
+        private Block switchBlock;
 
         protected override bool Deobfuscate(Block block)
         {
             // allSwitches.Clear();
             allVars = blocks.Method.Body.Variables.Locals;
             // findAllSwitches(allBlocks);
-            bool modified = false;
-            
+            var modified = false;
             if (block.LastInstr.OpCode == OpCodes.Switch)
             {
-
-
                 isSwitchBlock(block);
                 isExpressionBlock(block);
                 isNative(block);
-                if (switchBlock != null || localSwitch != null)
-                {
-
-                    //if normal switch block failed check to see if its expression
-
-                    modified = tester();
-                }
-
+                if (switchBlock != null || localSwitch != null) modified = tester();
 
 
                 //check if normal switch block
 
                 currentMethod = blocks.Method.FullName;
             }
-            else
-            {
-                //make sure switch block isnt null so we can continue
 
-            }
-            if (switchBlock != null || localSwitch != null)
-            {
-
-                //if normal switch block failed check to see if its expression
-
-                modified = tester();
-            }
+            if (switchBlock != null || localSwitch != null) modified = tester();
             return modified;
         }
-        public List<Block> allSwitches = new List<Block>();
-        void findAllSwitches(List<Block> allBlocks)
+
+        private void findAllSwitches(List<Block> allBlocks)
         {
-            foreach (Block blo in allBlocks)
-            {
+            foreach (var blo in allBlocks)
                 if (blo.LastInstr.OpCode == OpCodes.Switch)
                     allSwitches.Add(blo);
-            }
             allSwitches.Reverse();
             if (allSwitches.Count == 3)
                 ben = true;
         }
-        bool isXor(Block block)
+
+        private bool isXor(Block block)
         {
             //check to confirm it is indeed the correct block 
             //credits to TheProxy for this method since mine wasnt as efficient 
-            int l = block.Instructions.Count - 1;
+            var l = block.Instructions.Count - 1;
             var instr = block.Instructions;
             if (l < 4)
                 return false;
@@ -91,44 +72,32 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
 
             return true;
         }
-        public List<Block> processed = new List<Block>();
-        private IList<Local> allVars;
-        private bool native;
-        private bool isolder;
-        private bool ben;
 
-        bool tester()
+        private bool tester()
         {
-
-            bool edited = false;
+            var edited = false;
 
             //we need all the blocks that are connected to the switch block so all the cases
-            List<Block> allblocks = new List<Block>();
+            var allblocks = new List<Block>();
             foreach (var block in allBlocks)
-            {
                 if (block.FallThrough == switchBlock)
-                {
                     allblocks.Add(block);
-                }
 
-            }
-
-            foreach (Block blo in allblocks)
-            {
+            foreach (var blo in allblocks)
                 /*
-                 * now there are different types of ways the next arg is set
-                 * you have a block like this arg = num1*num2^num3
-                 * you have just arg = num1
-                 * conditional blocks arg = (flag) ? num1 : num2) ^ num3 * num4) the num1 and num2 are dependant on whether the flag is true or false
-                 * and finally we have just flag ? num1:num2 yet again depending on the flag
-                 * these are all the switch types */
+                     * now there are different types of ways the next arg is set
+                     * you have a block like this arg = num1*num2^num3
+                     * you have just arg = num1
+                     * conditional blocks arg = (flag) ? num1 : num2) ^ num3 * num4) the num1 and num2 are dependant on whether the flag is true or false
+                     * and finally we have just flag ? num1:num2 yet again depending on the flag
+                     * these are all the switch types */
                 //   if (processed.Contains(blo)) continue;
                 if (blo.LastInstr.IsLdcI4())
                 {
                     //if its just a arg = num then the last value of the block is a ldc so we go here
                     int val;
                     //we emulate the switch block this helps with it being more universal also makes life easier look in emulate method for more comments
-                    int nextCase = emulate(blo.LastInstr.GetLdcI4Value(), out val);
+                    var nextCase = emulate(blo.LastInstr.GetLdcI4Value(), out val);
                     //after we have the next case value we can use de4dot again to replace the new block to follow on from the current block
                     try
                     {
@@ -136,13 +105,11 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
                     }
                     catch
                     {
-
                     }
 
                     //we get the next block through the switchblocks targets and we find the local in the next block and replace it to ldc value so it can be solved into a single arg value for the next case
                     if (isolder)
                     {
-
                     }
                     else
                     {
@@ -163,24 +130,25 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
                     if (instr[instr.Count - 5].IsLdcI4())
                     {
                         //we now get all the keys so we can work out the next arg value to emulate the switch to get next case
-                        int l = instr.Count;
-                        int key1 = instr[l - 4].GetLdcI4Value();
-                        int key2 = instr[l - 2].GetLdcI4Value();
-                        int key3 = instr[l - 5].GetLdcI4Value();
-                        int value = key3 * key1 ^ key2;
+                        var l = instr.Count;
+                        var key1 = instr[l - 4].GetLdcI4Value();
+                        var key2 = instr[l - 2].GetLdcI4Value();
+                        var key3 = instr[l - 5].GetLdcI4Value();
+                        var value = (key3 * key1) ^ key2;
                         int val;
-                        int nextCase = emulate(value, out val);
+                        var nextCase = emulate(value, out val);
                         //we do the same as before to replace the block again 
                         blo.ReplaceLastNonBranchWithBranch(0, switchBlock.Targets[nextCase]);
                         if (isolder)
                         {
-
                         }
                         else
                         {
                             replace(switchBlock.Targets[nextCase], nextCase, val);
                         }
-                        blo.Add(new Instr(OpCodes.Pop.ToInstruction())); processed.Add(blo);
+
+                        blo.Add(new Instr(OpCodes.Pop.ToInstruction()));
+                        processed.Add(blo);
                         //    goto start;
                     }
                 }
@@ -191,10 +159,10 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
                     {
                         var instr = blo.Instructions;
                         //we check if the ldloc opcode has been replaced with ldc
-                        int l = instr.Count;
-                        if (!(instr[l - 4].IsLdcI4())) continue;
-                        int key1 = instr[l - 3].GetLdcI4Value();
-                        int key3 = instr[l - 4].GetLdcI4Value();
+                        var l = instr.Count;
+                        if (!instr[l - 4].IsLdcI4()) continue;
+                        var key1 = instr[l - 3].GetLdcI4Value();
+                        var key3 = instr[l - 4].GetLdcI4Value();
                         //now we get the two keys from this block however the other keys arent actually in this block
                         //they are in this blocks sources so we go through each source there should be 2
 
@@ -203,20 +171,20 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
                         foreach (var source in sources)
                         {
                             //now this will give us the final key we need to get the next arg value and next case
-                            int key2 = source.FirstInstr.GetLdcI4Value();
-                            int value = key2 ^ key3 * key1;
+                            var key2 = source.FirstInstr.GetLdcI4Value();
+                            var value = key2 ^ (key3 * key1);
 
 
                             int val;
-                            int nextCase = emulate(value, out val);
+                            var nextCase = emulate(value, out val);
                             if (isolder)
                             {
-
                             }
                             else
                             {
                                 replace(switchBlock.Targets[nextCase], nextCase, val);
                             }
+
                             try
                             {
                                 source.Instructions[1] = new Instr(OpCodes.Pop.ToInstruction());
@@ -229,17 +197,18 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
 
                             source.ReplaceLastNonBranchWithBranch(0, switchBlock.Targets[nextCase]);
                         }
+
                         processed.Add(blo);
                         //  goto start;
                     }
                 }
                 //finally we check if its a simple flag ? num1:num2
                 else if (blo.Sources.Count == 2 && blo.Instructions.Count == 1
-                    )
+                )
                 {
                     var instr = blo.Instructions;
 
-                    int l = instr.Count;
+                    var l = instr.Count;
                     //same again it will be in the sources of a pop block
                     var sources = new List<Block>(blo.Sources);
                     foreach (var source in sources)
@@ -249,10 +218,9 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
                         //again we go through the sources however this time we dont need to work out any value
                         //we just need to get the ldc value from the source block and emulate
                         int val;
-                        int nextCase = emulate(source.FirstInstr.GetLdcI4Value(), out val);
+                        var nextCase = emulate(source.FirstInstr.GetLdcI4Value(), out val);
                         if (isolder)
                         {
-
                         }
                         else
                         {
@@ -263,20 +231,21 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
 
                         source.ReplaceLastNonBranchWithBranch(0, switchBlock.Targets[nextCase]);
                     }
-                    processed.Add(blo);// goto start;
+
+                    processed.Add(blo); // goto start;
                 }
 
-            }
             //      switchBlock = null;
             //     localSwitch = null;
             return edited;
         }
-        int x86emulate(MethodDef methods, int[] val)
+
+        private int x86emulate(MethodDef methods, int[] val)
         {
-            
             var x86 = new X86Method(methods);
             return x86.Execute(val);
         }
+
         public void replace(Block test, int nextCase, int locVal)
         {
             //we replace the ldloc values with the correct ldc value 
@@ -286,47 +255,37 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
                 //normally the fallthrough block is the switch block but then fallthrough again you get the correct block you need to replace
                 //however this bit i dont really understand as much but it works so what ever but sometimes the fallthrough block is the first fallthrough not the second so we just set it to the first
                 if (test.FallThrough.FallThrough == switchBlock)
-                {
-
                     test = test.FallThrough;
-                }
                 else
-                {
                     test = test.FallThrough.FallThrough;
-
-                }
-
             }
+
             if (test == switchBlock) return;
 
-            for (int i = 0; i < test.Instructions.Count; i++)
-            {
+            if (test == null) return;
+            for (var i = 0; i < test.Instructions.Count; i++)
                 if (test.Instructions[i].Instruction.GetLocal(blocks.Method.Body.Variables) == localSwitch)
                 {
-
                     //check to see if the local is the same as the one from the switch block and replace it
                     test.Instructions[i] = new Instr(Instruction.CreateLdcI4(locVal));
                     return;
                 }
-            }
         }
+
         public int emulate(int val, out int locValue)
         {
             locValue = 0;
             //we take the value of the arg as a parameter to pass along to the switch block
-            InstructionEmulator ins = new InstructionEmulator(blocks.Method);
+            var ins = new InstructionEmulator(blocks.Method);
             ins.Initialize(blocks.Method);
             if (native)
             {
-                var test = x86emulate(switchBlock.FirstInstr.Operand as MethodDef, new int[] { val });
+                var test = x86emulate(switchBlock.FirstInstr.Operand as MethodDef, new[] {val});
                 ins.Push(new Int32Value(test));
                 //emulates the block however we dont emulate all the block 
                 ins.Emulate(switchBlock.Instructions, 1, switchBlock.Instructions.Count - 1);
                 //we now get the local value this will contain the num value used to work out the next arg in the next case
-                if (!isolder)
-                {
-                    locValue = (ins.GetLocal(localSwitch) as Int32Value).Value;
-                }
+                if (!isolder) locValue = (ins.GetLocal(localSwitch) as Int32Value).Value;
             }
             else
             {
@@ -334,23 +293,18 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
                 //emulates the block however we dont emulate all the block 
                 ins.Emulate(switchBlock.Instructions, 0, switchBlock.Instructions.Count - 1);
                 //we now get the local value this will contain the num value used to work out the next arg in the next case
-                if (!isolder)
-                {
-                    locValue = (ins.GetLocal(localSwitch) as Int32Value).Value;
-                }
-
-
+                if (!isolder) locValue = (ins.GetLocal(localSwitch) as Int32Value).Value;
             }
             //we use de4dots instructionEmulator to emulate the block
             //we push the arg value to the stack
 
             //we peek at the stack value and this is the next case so we return this to continue
-  
+
             var caseValue = ins.Peek() as Int32Value;
             return caseValue.Value;
-
         }
-        void isExpressionBlock(Block block)
+
+        private void isExpressionBlock(Block block)
         {
             if (block.Instructions.Count < 7)
                 return;
@@ -360,14 +314,12 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
 
             switchBlock = block;
             //set the local to a variable to compare to later
-            localSwitch = Instr.GetLocalVar(blocks.Method.Body.Variables.Locals, block.Instructions[block.Instructions.Count - 4]);
-            return;
-
-
+            localSwitch = Instr.GetLocalVar(blocks.Method.Body.Variables.Locals,
+                block.Instructions[block.Instructions.Count - 4]);
         }
-        void isNative(Block block)
-        {
 
+        private void isNative(Block block)
+        {
             if (block.Instructions.Count <= 5)
                 return;
             if (block.FirstInstr.OpCode != OpCodes.Call)
@@ -377,9 +329,9 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
 
             //set the local to a variable to compare to later
             localSwitch = Instr.GetLocalVar(allVars, block.Instructions[block.Instructions.Count - 4]);
-            return;
         }
-        void isolderCflow(Block block)
+
+        private void isolderCflow(Block block)
         {
             if (block.Instructions.Count <= 2)
                 return;
@@ -390,9 +342,9 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
             switchBlock = block;
             //set the local to a variable to compare to later
             //  localSwitch = Instr.GetLocalVar(allVars, block.Instructions[block.Instructions.Count - 4]);
-            return;
         }
-        void isolderNatCflow(Block block)
+
+        private void isolderNatCflow(Block block)
         {
             if (block.Instructions.Count != 2)
                 return;
@@ -404,9 +356,9 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
             native = true;
             //set the local to a variable to compare to later
             //  localSwitch = Instr.GetLocalVar(allVars, block.Instructions[block.Instructions.Count - 4]);
-            return;
         }
-        void isolderExpCflow(Block block)
+
+        private void isolderExpCflow(Block block)
         {
             if (block.Instructions.Count <= 2)
                 return;
@@ -417,9 +369,9 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
             switchBlock = block;
             //set the local to a variable to compare to later
             //  localSwitch = Instr.GetLocalVar(allVars, block.Instructions[block.Instructions.Count - 4]);
-            return;
         }
-        void isSwitchBlock(Block block)
+
+        private void isSwitchBlock(Block block)
         {
             if (block.Instructions.Count <= 6)
                 return;
@@ -430,11 +382,6 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
             switchBlock = block;
             //set the local to a variable to compare to later
             localSwitch = Instr.GetLocalVar(allVars, block.Instructions[block.Instructions.Count - 4]);
-            return;
-
-
-
-
         }
     }
 }
