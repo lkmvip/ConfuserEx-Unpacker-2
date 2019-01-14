@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -23,10 +24,11 @@ namespace ConfuserEx_Unpacker.Protections.Antitamper
 
         private static BinaryReader reader;
         private static MemoryStream input;
+        private static MethodDef ATMeth;
 
         public override void Deobfuscate()
         {
-            if (IsTampered(ModuleDef) == true&&Base.CompressorRemoved != false)
+            if (IsTampered(ModuleDef) == true&&Base.CompressorRemoved != false&&checkTamperMethod())
             {
                 Console.WriteLine("[!] Anti Tamper Detected");
 
@@ -46,6 +48,45 @@ namespace ConfuserEx_Unpacker.Protections.Antitamper
                 }
 
             }
+        }
+
+        public static bool checkTamperMethod()
+        {
+            MethodDef cctor = ModuleDef.GlobalType.FindStaticConstructor();
+            if (cctor == null)
+            {
+                return false;
+            }
+            //cctor should be first instructions. But in some mods, it's not in instructions 0 so let's give
+            //us some instructions to find it
+            for (int i = 0; i < cctor.Body.Instructions.Count; i++)
+            {
+                if (cctor.Body.Instructions[i].OpCode == OpCodes.Call)
+                {
+                    try
+                    {
+                        MethodDef method = (MethodDef)cctor.Body.Instructions[i].Operand;
+                        for (int z = 0; z < method.Body.Instructions.Count; z++)
+                        {
+                            if (method.Body.Instructions[z].OpCode == OpCodes.Call)
+                            {
+                                string operand = method.Body.Instructions[z].Operand.ToString();
+                                if (operand.Contains("GetHINSTANCE"))
+                                {
+                                    ATMeth = method;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+
+                    }
+                }
+            }
+
+            return false;
         }
         public static ModuleDefMD UnAntiTamper(ModuleDefMD module, byte[] rawbytes)
         {
