@@ -165,11 +165,11 @@ namespace ConfuserEx_Unpacker.Protections.Constants
                                             if (methods.Body.Instructions[i - y - 1].IsLdcI4())
                                             {
                                                 paramss[y] = methods.Body.Instructions[i - y - 1].GetLdcI4Value();
-                                                methods.Body.Instructions[i - y - 1].OpCode = OpCodes.Nop;
+                                              //  methods.Body.Instructions[i - y - 1].OpCode = OpCodes.Nop;
                                             }
 
                                         }
-                                        paramss.Reverse();
+                                        Array.Reverse(paramss);
                                     }
 
                                     if (paramss.Any(g => g == null))
