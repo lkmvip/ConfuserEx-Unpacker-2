@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ConfuserEx_Unpacker.Protections.Constants
@@ -89,6 +90,8 @@ namespace ConfuserEx_Unpacker.Protections.Constants
                     args.Break = true;
                 }
             };
+            GC.Collect();
+            Thread.Sleep(1000);
             emulator.Emulate();
 
             return bytes;
