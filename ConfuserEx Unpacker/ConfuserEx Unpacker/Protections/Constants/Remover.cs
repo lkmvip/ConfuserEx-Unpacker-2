@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ConfuserEx_Unpacker.Protections.Constants
@@ -89,6 +90,8 @@ namespace ConfuserEx_Unpacker.Protections.Constants
                     args.Break = true;
                 }
             };
+            GC.Collect();
+            Thread.Sleep(1000);
             emulator.Emulate();
 
             return bytes;
@@ -153,8 +156,8 @@ namespace ConfuserEx_Unpacker.Protections.Constants
                                     {
                                         if (methods.Body.Instructions[i - 1].IsLdcI4())
                                         {
-                                            paramss[0] = methods.Body.Instructions[i - 1].Operand;
-                                            methods.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+                                            paramss[0] = methods.Body.Instructions[i - 1].GetLdcI4Value();
+                                            
                                         }
                                     }
 
@@ -164,10 +167,12 @@ namespace ConfuserEx_Unpacker.Protections.Constants
                                         {
                                             if (methods.Body.Instructions[i - y - 1].IsLdcI4())
                                             {
-                                                paramss[y] = methods.Body.Instructions[i - y - 1].Operand;
-                                                methods.Body.Instructions[i - y - 1].OpCode = OpCodes.Nop;
+                                                paramss[y] = methods.Body.Instructions[i - y - 1].GetLdcI4Value();
+                                              //  methods.Body.Instructions[i - y - 1].OpCode = OpCodes.Nop;
                                             }
+
                                         }
+                                        Array.Reverse(paramss);
                                     }
 
                                     if (paramss.Any(g => g == null))
@@ -177,6 +182,21 @@ namespace ConfuserEx_Unpacker.Protections.Constants
                                     var result = DecryptConstant(decryptionMethod, paramss, bytes);
                                     if (result != null)
                                     {
+                                        if(paramsCount == 1)
+                                        {
+                                            methods.Body.Instructions[i - 1].OpCode = OpCodes.Nop;
+                                        }
+                                        else
+                                        {
+                                            for (int y = 0; y < paramsCount; y++)
+                                            {
+                                                if (methods.Body.Instructions[i - y - 1].IsLdcI4())
+                                                {
+                                                    methods.Body.Instructions[i - y - 1].OpCode = OpCodes.Nop;
+                                                }
+                                            }
+                                        }
+
                                         methods.Body.Instructions[i].OpCode = OpCodes.Ldstr;
                                         methods.Body.Instructions[i].Operand = result.ToString();
                                         Console.WriteLine("Decrypted string {0}", result);

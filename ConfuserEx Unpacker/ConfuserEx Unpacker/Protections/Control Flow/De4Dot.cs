@@ -24,9 +24,11 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
             // allSwitches.Clear();
             allVars = blocks.Method.Body.Variables.Locals;
             // findAllSwitches(allBlocks);
+            
             var modified = false;
             if (block.LastInstr.OpCode == OpCodes.Switch)
             {
+                
                 isSwitchBlock(block);
                 isExpressionBlock(block);
                 isNative(block);
@@ -259,6 +261,8 @@ namespace ConfuserEx_Unpacker.Protections.Control_Flow
                 else
                     test = test.FallThrough.FallThrough;
             }
+            if (test.LastInstr.OpCode == OpCodes.Switch)
+                test = test.FallThrough;
 
             if (test == switchBlock) return;
 
